@@ -15,12 +15,12 @@ public class EmployeeController {
             new Employee(3, "Kevin Malone")
             );
 
-    @GetMapping("/{studentId}")
-    public Employee getStudent(@PathVariable("studentId") int id) {
+    @GetMapping("/{employeeId}")
+    public Employee getEmployees(@PathVariable("employeeId") int id) {
         return EMPLOYEES.stream()
                 .filter(employee -> id == employee.getId())
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Student with id " + id + "not found"));
+                .orElseThrow(() -> new IllegalStateException("Employee with id " + id + "not found"));
     }
 
 

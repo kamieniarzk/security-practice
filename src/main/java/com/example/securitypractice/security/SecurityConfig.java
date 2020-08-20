@@ -1,32 +1,30 @@
 package com.example.securitypractice.security;
 
+import com.example.securitypractice.auth.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 
 import static com.example.securitypractice.security.UserRole.*;
 
-@Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     private final PasswordEncoder passwordEncoder;
+    private final UserService userService;
 
     @Autowired
-    public SecurityConfig(PasswordEncoder passwordEncoder) {
+    public SecurityConfig(PasswordEncoder passwordEncoder, UserService userService) {
         this.passwordEncoder = passwordEncoder;
+        this.userService = userService;
     }
-
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
@@ -38,35 +36,34 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .anyRequest()
                 .authenticated()
                 .and()
-                .formLogin();
+                .formLogin()
+                    .loginPage("/login")
+                    .permitAll()
+                    .defaultSuccessUrl("/accounts", true)
+                    .passwordParameter("password")
+                    .usernameParameter("username")
+                .and()
+                .rememberMe()
+                .and()
+                .logout()
+                    .logoutUrl("/logout")
+                    .clearAuthentication(true)
+                    .invalidateHttpSession(true)
+                    .deleteCookies("JSESSIONID", "remember-me")
+                    .logoutSuccessUrl("/login");
+
     }
 
     @Override
-    @Bean
-    protected UserDetailsService userDetailsService() {
-        UserDetails michaelScott = User.builder()
-                .username("michaelscott")
-                .password(passwordEncoder.encode("password"))
-                .authorities(MANAGER.getGrantedAuthorities())
-                .build();
-
-        UserDetails dwightSchrute = User.builder()
-                .username("dwightschrute")
-                .password(passwordEncoder.encode("password"))
-                .authorities(SALESMAN.getGrantedAuthorities())
-                .build();
-
-        UserDetails kevinMalone = User.builder()
-                .username("kevinmalone")
-                .password(passwordEncoder.encode("password"))
-                .authorities(ACCOUNTANT.getGrantedAuthorities())
-                .build();
-
-
-        return new InMemoryUserDetailsManager(
-                michaelScott,
-                dwightSchrute,
-                kevinMalone
-        );
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.authenticationProvider(daoAuthenticationProvider());
     }
+
+    @Bean
+    public DaoAuthenticationProvider daoAuthenticationProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setPasswordEncoder(passwordEncoder);
+        provider.setUserDetailsService(userService);
+        return provider;
+  }
 }
