@@ -11,6 +11,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import javax.crypto.SecretKey;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -27,24 +28,30 @@ import java.util.stream.Collectors;
 */
 
 public class JwtVerifier extends OncePerRequestFilter {
+    private final SecretKey secretKey;
+    private final JwtConfig jwtConfig;
+
+    public JwtVerifier(SecretKey secretKey, JwtConfig jwtConfig) {
+        this.secretKey = secretKey;
+        this.jwtConfig = jwtConfig;
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
                                     FilterChain filterChain) throws ServletException, IOException {
-        String key = "9812hdwa9s78adghsajfbasf8912gfasgf6217fgbas-sadasd-sa";
-
         // extracting the token
-        String authHeader = httpServletRequest.getHeader("Authorization");
-        if(Strings.isNullOrEmpty(authHeader) || !authHeader.startsWith("Bearer ")) {
+        String authHeader = httpServletRequest.getHeader(jwtConfig.getAuthorizationHeader());
+        if(Strings.isNullOrEmpty(authHeader) || !authHeader.startsWith(jwtConfig.getTokenPrefix())) {
             filterChain.doFilter(httpServletRequest, httpServletResponse);
             return;
         }
 
-        String token = authHeader.replace("Bearer ", "");
+        String token = authHeader.replace(jwtConfig.getTokenPrefix(), "");
 
         try{
             // extracting data from the token (username and authorities)
             Jws<Claims> claimsJws =  Jwts.parserBuilder()
-                    .setSigningKey(key.getBytes())
+                    .setSigningKey(secretKey)
                     .build().parseClaimsJws(token);
             Claims body = claimsJws.getBody();
             String username = body.getSubject();
